@@ -684,9 +684,7 @@ MulticopterPositionControl::run()
 			_control.updateState(_states);
 
 			// update position controller setpoints
-			if (!_control.updateSetpoint(setpoint)) {
-				warn_rate_limited("Position-Control Setpoint-Update failed");
-			}
+			_control.updateSetpoint(setpoint);
 
 			// Generate desired thrust and yaw.
 			_control.generateThrustYawSetpoint(_dt);
@@ -724,6 +722,9 @@ MulticopterPositionControl::run()
 
 			// Fill attitude setpoint. Attitude is computed from yaw and thrust setpoint.
 			_att_sp = ControlMath::thrustToAttitude(matrix::Vector3f(local_pos_sp.thrust), local_pos_sp.yaw);
+			if(_param_mpc_auto_mode.get() == 1) {
+				_att_sp = ControlMath::accelerationToAttitude(Vector3f(local_pos_sp.acceleration), local_pos_sp.yaw, _param_mpc_thr_hover.get());
+			}
 			_att_sp.yaw_sp_move_rate = _control.getYawspeedSetpoint();
 			_att_sp.fw_control_yaw = false;
 			_att_sp.apply_flaps = false;

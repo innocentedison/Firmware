@@ -57,9 +57,11 @@ vehicle_attitude_setpoint_s thrustToAttitude(const Vector3f &thr_sp, const float
 
 vehicle_attitude_setpoint_s accelerationToAttitude(const Vector3f &acc_sp, const float yaw_sp, const float hover_thrust)
 {
+	//acc_sp.print();
 	Vector3f body_z = Vector3f(-acc_sp(0), -acc_sp(1), A_GRAVITY);
 	vehicle_attitude_setpoint_s att_sp = bodyzToAttitude(body_z, yaw_sp);
 	att_sp.thrust_body[2] = acc_sp(2) * (hover_thrust / A_GRAVITY) - hover_thrust;
+	att_sp.thrust_body[2] = att_sp.thrust_body[2] / (Vector3f(0,0,1).dot(body_z.normalized()));
 	return att_sp;
 }
 
