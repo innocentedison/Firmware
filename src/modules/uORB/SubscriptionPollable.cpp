@@ -32,68 +32,79 @@
  ****************************************************************************/
 
 /**
- * @file Publication.cpp
+ * @file SubscriptionPollable.cpp
  *
  */
 
-#include "Publication.hpp"
+#include "SubscriptionPollable.hpp"
 #include <px4_defines.h>
 
 namespace uORB
 {
 
-PublicationBase::PublicationBase(const struct orb_metadata *meta, int priority) :
+SubscriptionPollableBase::SubscriptionPollableBase(const struct orb_metadata *meta, unsigned interval,
+		unsigned instance) :
 	_meta(meta),
-	_priority(priority)
+	_instance(instance)
 {
-}
-
-PublicationBase::~PublicationBase()
-{
-	orb_unadvertise(_handle);
-}
-
-bool PublicationBase::update(void *data)
-{
-	bool updated = false;
-
-	if (_handle != nullptr) {
-		if (orb_publish(_meta, _handle, data) != PX4_OK) {
-			PX4_ERR("%s publish fail", _meta->o_name);
-
-		} else {
-			updated = true;
-		}
+	if (instance > 0) {
+		_handle = orb_subscribe_multi(_meta, instance);
 
 	} else {
-		orb_advert_t handle = nullptr;
+		_handle = orb_subscribe(_meta);
+	}
 
-		if (_priority > 0) {
-			int instance;
-			handle = orb_advertise_multi(_meta, data, &instance, _priority);
+	if (_handle < 0) {
+		PX4_ERR("%s sub failed", _meta->o_name);
+	}
+
+	if (interval > 0) {
+		orb_set_interval(_handle, interval);
+	}
+}
+
+bool SubscriptionPollableBase::updated()
+{
+	bool isUpdated = false;
+
+	if (orb_check(_handle, &isUpdated) != PX4_OK) {
+		PX4_ERR("%s check failed", _meta->o_name);
+	}
+
+	return isUpdated;
+}
+
+bool SubscriptionPollableBase::update(void *data)
+{
+	bool orb_updated = false;
+
+	if (updated()) {
+		if (orb_copy(_meta, _handle, data) != PX4_OK) {
+			PX4_ERR("%s copy failed", _meta->o_name);
 
 		} else {
-			handle = orb_advertise(_meta, data);
-		}
-
-		if (handle != nullptr) {
-			_handle = handle;
-			updated = true;
-
-		} else {
-			PX4_ERR("%s advert fail", _meta->o_name);
+			orb_updated = true;
 		}
 	}
 
-	return updated;
+	return orb_updated;
 }
 
-PublicationNode::PublicationNode(const struct orb_metadata *meta, int priority, List<PublicationNode *> *list) :
-	PublicationBase(meta, priority)
+SubscriptionPollableBase::~SubscriptionPollableBase()
+{
+	if (orb_unsubscribe(_handle) != PX4_OK) {
+		PX4_ERR("%s unsubscribe failed", _meta->o_name);
+	}
+}
+
+SubscriptionPollableNode::SubscriptionPollableNode(const struct orb_metadata *meta, unsigned interval,
+		unsigned instance,
+		List<SubscriptionPollableNode *> *list)
+	: SubscriptionPollableBase(meta, interval, instance)
 {
 	if (list != nullptr) {
 		list->add(this);
 	}
 }
 
-}  // namespace uORB
+} // namespace uORB

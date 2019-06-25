@@ -268,6 +268,11 @@ private:
 	void write_perf_data(bool preflight);
 
 	/**
+	 * write bootup console output
+	 */
+	void write_console_output();
+
+	/**
 	 * callback to write the performance counters
 	 */
 	static void perf_iterate_callback(perf_counter_t handle, void *user);
@@ -382,6 +387,7 @@ private:
 	bool						_manually_logging_override{false};
 
 	Statistics					_statistics[(int)LogType::Count];
+	hrt_abstime					_last_sync_time{0}; ///< last time a sync msg was sent
 
 	LogMode						_log_mode;
 	const bool					_log_name_timestamp;
@@ -400,7 +406,7 @@ private:
 											will be stopped after load printing (for the full log) */
 	print_load_s					_load{}; ///< process load data
 	hrt_abstime					_next_load_print{0}; ///< timestamp when to print the process load
-	PrintLoadReason					_print_load_reason;
+	PrintLoadReason					_print_load_reason {PrintLoadReason::Preflight};
 
 	param_t						_sdlog_profile_handle{PARAM_INVALID};
 	param_t						_log_utc_offset{PARAM_INVALID};
